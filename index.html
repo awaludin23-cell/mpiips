@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPI - Interaksi Sosial (SMP Kelas VII)</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3C096C',
+                        secondary: '#2EC4B6',
+                        accent: '#F8F9FA',
+                        darkBg: '#121212',
+                        darkCard: '#1E1E1E'
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #F8F9FA;
+            color: #333;
+            transition: background-color 0.3s, color 0.3s;
+            overflow-x: hidden;
+        }
+        .dark body {
+            background-color: #121212;
+            color: #E0E0E0;
+        }
+        
+        /* 3D Button Styles */
+        .btn-3d {
+            transition: all 0.1s;
+            box-shadow: 0 6px 0 #1a0430; /* Darker primary */
+            transform: translateY(0);
+        }
+        .btn-3d:active {
+            box-shadow: 0 0px 0 #1a0430;
+            transform: translateY(6px);
+        }
+        
+        .btn-3d-secondary {
+            transition: all 0.1s;
+            box-shadow: 0 6px 0 #167a70; /* Darker secondary */
+            transform: translateY(0);
+        }
+        .btn-3d-secondary:active {
+            box-shadow: 0 0px 0 #167a70;
+            transform: translateY(6px);
+        }
+
+        /* Certificate Container */
+        .cert-container {
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(135deg, #F8F9FA, #E0F7FA);
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .cert-border {
+            position: absolute;
+            top: 20px; left: 20px; right: 20px; bottom: 20px;
+            border: 4px solid #3C096C;
+            border-radius: 10px;
+        }
+        
+        /* Animations */
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #3C096C; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-track { background: #2d2d2d; }
+        .dark ::-webkit-scrollbar-thumb { background: #2EC4B6; }
+
+        /* Drag and Drop styles */
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .dropzone.dragover { background-color: rgba(46, 196, 182, 0.2); border: 2px dashed #2EC4B6; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Audio Element -->
+    <audio id="bgm" loop>
+        <source src="https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Header (Hidden on Login) -->
+    <header id="app-header" class="hidden bg-primary text-white p-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold md:text-2xl">MPI Interaksi Sosial</h1>
+                <p class="text-xs text-secondary font-semibold">SMPN 7 Sajira</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="btn-tts" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition" title="Bacakan Teks" onclick="toggleTTS()">
+                    <i class="fas fa-volume-up"></i>
+                </button>
+                <button id="btn-audio" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition" title="Musik" onclick="toggleAudio()">
+                    <i class="fas fa-music"></i>
+                </button>
+                <button id="btn-theme" class="p-2 bg-white/20 rounded-full hover:bg-white/40 transition" title="Tema Mode" onclick="toggleTheme()">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <div id="user-badge" class="hidden md:flex items-center bg-secondary px-3 py-1 rounded-full text-sm font-bold text-primary">
+                    <i class="fas fa-user mr-2"></i> <span id="display-name">Siswa</span>
+                </div>
+            </div>
+        </div>
+        <!-- Progress Bar -->
+        <div class="max-w-4xl mx-auto mt-2 bg-white/30 rounded-full h-2">
+            <div id="global-progress" class="bg-secondary h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+    </header>
+
+    <main class="flex-grow w-full max-w-4xl mx-auto p-4 md:p-6 relative">
+        
+        <!-- ================= LOGIN SECTION ================= -->
+        <section id="screen-login" class="fade-in min-h-[80vh] flex flex-col justify-center items-center text-center">
+            <div class="bg-white dark:bg-darkCard p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 border-primary relative overflow-hidden">
+                <div class="absolute top-[-30px] right-[-30px] w-24 h-24 bg-secondary rounded-full opacity-20"></div>
+                <h2 class="text-3xl font-bold text-primary dark:text-secondary mb-2">MPI</h2>
+                <h3 class="text-lg font-semibold mb-6">Interaksi Sosial</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Halo! Silakan masukkan data diri kamu untuk mulai belajar.</p>
+                
+                <input type="text" id="input-name" placeholder="Nama Lengkap" class="w-full p-3 mb-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary dark:bg-gray-800 dark:border-gray-700">
+                
+                <select id="input-class-dropdown" class="w-full p-3 mb-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary dark:bg-gray-800 dark:border-gray-700" onchange="checkClassCustom()">
+                    <option value="">Pilih Kelas...</option>
+                    <option value="VII A">VII A</option>
+                    <option value="VII B">VII B</option>
+                    <option value="VII C">VII C</option>
+                    <option value="custom">Lainnya / Tulis Manual</option>
+                </select>
+
+                <input type="text" id="input-class-manual" placeholder="Tulis kelasmu..." class="hidden w-full p-3 mb-6 border rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary dark:bg-gray-800 dark:border-gray-700">
+                
+                <button onclick="startApp()" class="w-full bg-primary text-white font-bold text-lg py-3 rounded-xl btn-3d">
+                    MULAI BELAJAR <i class="fas fa-rocket ml-2"></i>
+                </button>
+            </div>
+            <div class="mt-8 text-gray-500 font-semibold">SMPN 7 Sajira</div>
+        </section>
+
+        <!-- ================= MAIN MENU ================= -->
+        <section id="screen-menu" class="hidden fade-in">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-primary dark:text-secondary">Menu Utama</h2>
+                <p class="text-gray-600 dark:text-gray-300">Pilih materi yang ingin kamu pelajari hari ini, <span class="font-bold text-secondary" id="greet-name"></span>!</p>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                <!-- Menu Items -->
+                <button onclick="navTo('tujuan')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group">
+                    <div class="w-16 h-16 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-bullseye"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Tujuan<br>Pembelajaran</span>
+                </button>
+                <button onclick="navTo('apersepsi')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group">
+                    <div class="w-16 h-16 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Apersepsi</span>
+                </button>
+                <button onclick="navTo('asesmen-awal')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group">
+                    <div class="w-16 h-16 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-clipboard-question"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Asesmen Awal</span>
+                </button>
+                <button onclick="navTo('materi')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group">
+                    <div class="w-16 h-16 rounded-full bg-primary/20 text-primary flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Materi<br>Pembelajaran</span>
+                </button>
+                <button onclick="navTo('simulasi')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group">
+                    <div class="w-16 h-16 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Simulasi / Aktivitas</span>
+                </button>
+                <button onclick="navTo('kuis')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group">
+                    <div class="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-stopwatch"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Kuis Interaktif</span>
+                </button>
+                <button onclick="navTo('asesmen-akhir')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group">
+                    <div class="w-16 h-16 rounded-full bg-secondary/20 text-secondary flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-flag-checkered"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Asesmen Akhir</span>
+                </button>
+                <button onclick="navTo('refleksi')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group">
+                    <div class="w-16 h-16 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-face-smile"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Refleksi</span>
+                </button>
+                <button onclick="navTo('sertifikat')" class="bg-white dark:bg-darkCard p-6 rounded-2xl flex flex-col items-center justify-center gap-3 btn-3d border border-gray-100 dark:border-gray-800 group col-span-2 md:col-span-1">
+                    <div class="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-3xl group-hover:scale-110 transition">
+                        <i class="fas fa-certificate"></i>
+                    </div>
+                    <span class="font-bold text-sm md:text-base">Sertifikat</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= TUJUAN PEMBELAJARAN ================= -->
+        <section id="screen-tujuan" class="hidden fade-in read-content">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2"><i class="fas fa-bullseye mr-2"></i> Tujuan Pembelajaran</h2>
+            <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm">
+                <img src="https://placehold.co/800x300/3C096C/F8F9FA?text=Fokus+Belajar+Hari+Ini" alt="Tujuan Ilus" class="w-full rounded-xl mb-6 object-cover h-48">
+                <p class="text-lg mb-4">Setelah mempelajari unit ini, kamu diharapkan mampu:</p>
+                <ul class="list-none space-y-4">
+                    <li class="flex items-start">
+                        <div class="bg-secondary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-3 shrink-0">1</div>
+                        <p>Mendeskripsikan <strong>syarat terjadinya interaksi sosial</strong> (kontak sosial dan komunikasi) dengan benar.</p>
+                    </li>
+                    <li class="flex items-start">
+                        <div class="bg-secondary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-3 shrink-0">2</div>
+                        <p>Mengelaborasi <strong>bentuk-bentuk proses interaksi sosial</strong> (Asosiatif & Disosiatif) di lingkungan sekitar dengan tepat.</p>
+                    </li>
+                    <li class="flex items-start">
+                        <div class="bg-secondary text-white rounded-full w-8 h-8 flex items-center justify-center font-bold mr-3 shrink-0">3</div>
+                        <p>Menganalisis <strong>dampak dari interaksi sosial</strong> dalam kehidupan bermasyarakat.</p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ================= APERSEPSI ================= -->
+        <section id="screen-apersepsi" class="hidden fade-in read-content">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2"><i class="fas fa-lightbulb mr-2"></i> Apersepsi</h2>
+            <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm text-center">
+                <img src="https://placehold.co/800x400/2EC4B6/121212?text=Bayangkan+jika+kamu+hidup+sendiri+di+pulau+terpencil..." alt="Apersepsi" class="w-full rounded-xl mb-6 object-cover max-h-64">
+                
+                <h3 class="text-xl font-bold text-primary dark:text-secondary mb-3">Mari Berpikir! (Think - Pair - Share)</h3>
+                <p class="text-lg italic mb-6">"Apa yang akan terjadi jika dalam satu hari penuh, kamu tidak berbicara atau berhubungan dengan siapapun, baik secara langsung maupun melalui HP?"</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+                    <div class="bg-accent dark:bg-gray-800 p-4 rounded-xl">
+                        <h4 class="font-bold text-primary dark:text-white"><i class="fas fa-brain mr-2"></i>Think (Pikirkan)</h4>
+                        <p class="text-sm">Pikirkan jawaban dari pertanyaan di atas secara mandiri selama 2 menit.</p>
+                    </div>
+                    <div class="bg-accent dark:bg-gray-800 p-4 rounded-xl">
+                        <h4 class="font-bold text-primary dark:text-white"><i class="fas fa-user-friends mr-2"></i>Pair (Pasangkan)</h4>
+                        <p class="text-sm">Diskusikan pemikiranmu dengan teman sebangkumu.</p>
+                    </div>
+                    <div class="bg-accent dark:bg-gray-800 p-4 rounded-xl">
+                        <h4 class="font-bold text-primary dark:text-white"><i class="fas fa-comments mr-2"></i>Share (Bagikan)</h4>
+                        <p class="text-sm">Sampaikan hasil diskusi kalian kepada guru dan teman di kelas.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= ASESMEN AWAL ================= -->
+        <section id="screen-asesmen-awal" class="hidden fade-in">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2"><i class="fas fa-clipboard-question mr-2"></i> Asesmen Awal</h2>
+            <div id="awal-container" class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm">
+                <!-- Injected via JS -->
+            </div>
+        </section>
+
+        <!-- ================= MATERI PEMBELAJARAN ================= -->
+        <section id="screen-materi" class="hidden fade-in read-content space-y-6">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2"><i class="fas fa-book-open mr-2"></i> Materi: Interaksi Sosial</h2>
+            
+            <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm">
+                <h3 class="text-xl font-bold text-primary dark:text-secondary mb-2">1. Apa itu Interaksi Sosial?</h3>
+                <p class="mb-4">Interaksi sosial adalah hubungan timbal balik antara individu dengan individu, individu dengan kelompok, maupun kelompok dengan kelompok.</p>
+                
+                <h3 class="text-xl font-bold text-primary dark:text-secondary mt-6 mb-2">2. Syarat Terjadinya Interaksi Sosial</h3>
+                <div class="grid md:grid-cols-2 gap-4 mb-4">
+                    <div class="bg-accent dark:bg-gray-800 p-4 rounded-xl border-l-4 border-primary">
+                        <h4 class="font-bold"><i class="fas fa-handshake text-secondary mr-2"></i> Kontak Sosial</h4>
+                        <p class="text-sm">Bertemunya pihak-pihak yang berinteraksi. Bisa primer (langsung tatap muka) atau sekunder (melalui alat perantara seperti HP).</p>
+                    </div>
+                    <div class="bg-accent dark:bg-gray-800 p-4 rounded-xl border-l-4 border-secondary">
+                        <h4 class="font-bold"><i class="fas fa-comment-dots text-primary mr-2"></i> Komunikasi</h4>
+                        <p class="text-sm">Proses penyampaian pesan dari komunikator kepada komunikan, dan komunikan memberikan reaksi/tanggapan (feedback).</p>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div class="bg-secondary/10 border-2 border-secondary rounded-xl p-4 my-6 flex items-start">
+                    <i class="fas fa-info-circle text-secondary text-3xl mr-4 mt-1"></i>
+                    <div>
+                        <h4 class="font-bold text-secondary text-lg">Tahukah Kamu?</h4>
+                        <p class="text-sm dark:text-gray-300">Tidak semua senyuman bernilai interaksi sosial. Jika kamu tersenyum sendiri tanpa ada orang lain yang merespon, itu bukan interaksi. Namun jika kamu tersenyum pada teman dan ia membalas senyummu, itulah interaksi!</p>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-primary dark:text-secondary mt-6 mb-2">3. Bentuk-Bentuk Interaksi Sosial</h3>
+                
+                <h4 class="font-bold text-lg mt-4 text-green-600 dark:text-green-400">A. Asosiatif (Menyatukan)</h4>
+                <p class="mb-2">Interaksi yang mengarah pada kesatuan dan kerja sama.</p>
+                <ul class="list-disc pl-5 mb-4 space-y-1">
+                    <li><strong>Kerja Sama (Cooperation):</strong> Usaha bersama untuk mencapai tujuan (contoh: gotong royong).</li>
+                    <li><strong>Akomodasi:</strong> Usaha meredakan pertentangan (contoh: mediasi).</li>
+                    <li><strong>Asimilasi:</strong> Percampuran dua kebudayaan melebur jadi kebudayaan baru.</li>
+                    <li><strong>Akulturasi:</strong> Percampuran budaya tanpa menghilangkan ciri khas budaya asli.</li>
+                </ul>
+
+                <h4 class="font-bold text-lg mt-4 text-red-600 dark:text-red-400">B. Disosiatif (Memisahkan)</h4>
+                <p class="mb-2">Interaksi yang mengarah pada perpecahan atau konflik.</p>
+                <ul class="list-disc pl-5 mb-4 space-y-1">
+                    <li><strong>Persaingan (Kompetisi):</strong> Berjuang mencapai tujuan yang sama tanpa ancaman (contoh: lomba cerdas cermat).</li>
+                    <li><strong>Kontravensi:</strong> Rasa tidak suka yang disembunyikan (contoh: iri hati, menyebarkan gosip).</li>
+                    <li><strong>Pertentangan (Konflik):</strong> Usaha mencapai tujuan dengan menentang pihak lain disertai ancaman/kekerasan (contoh: tawuran).</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- ================= SIMULASI / AKTIVITAS ================= -->
+        <section id="screen-simulasi" class="hidden fade-in">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2"><i class="fas fa-gamepad mr-2"></i> Simulasi: Klasifikasi Interaksi</h2>
+            <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm text-center">
+                <p class="mb-4">Ketuk/klik aktivitas di bawah ini, lalu pilih masuk ke keranjang <strong>Asosiatif</strong> atau <strong>Disosiatif</strong>.</p>
+                
+                <!-- Items to Sort -->
+                <div id="sim-items" class="flex flex-wrap justify-center gap-3 mb-8">
+                    <!-- JS Injected -->
+                </div>
+
+                <!-- Dropzones / Categories -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div id="box-asosiatif" class="border-4 border-green-500 rounded-xl p-4 min-h-[150px] flex flex-col items-center bg-green-50 dark:bg-green-900/20 cursor-pointer" onclick="selectCategory('Asosiatif')">
+                        <h3 class="font-bold text-green-700 dark:text-green-400 mb-2">ASOSIATIF <br>(Menyatukan)</h3>
+                        <div id="content-asosiatif" class="flex flex-col gap-2 w-full text-sm"></div>
+                    </div>
+                    
+                    <div id="box-disosiatif" class="border-4 border-red-500 rounded-xl p-4 min-h-[150px] flex flex-col items-center bg-red-50 dark:bg-red-900/20 cursor-pointer" onclick="selectCategory('Disosiatif')">
+                        <h3 class="font-bold text-red-700 dark:text-red-400 mb-2">DISOSIATIF <br>(Memisahkan)</h3>
+                        <div id="content-disosiatif" class="flex flex-col gap-2 w-full text-sm"></div>
+                    </div>
+                </div>
+
+                <div id="sim-feedback" class="mt-6 font-bold text-lg hidden"></div>
+                <button onclick="resetSimulasi()" class="mt-4 px-4 py-2 bg-gray-300 dark:bg-gray-700 rounded-lg hover:bg-gray-400 transition hidden" id="btn-reset-sim">Ulangi Simulasi</button>
+            </div>
+        </section>
+
+        <!-- ================= KUIS INTERAKTIF ================= -->
+        <section id="screen-kuis" class="hidden fade-in">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2 flex justify-between items-center">
+                <span><i class="fas fa-stopwatch mr-2"></i> Kuis Interaktif</span>
+                <span id="kuis-timer" class="bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-bold">10:00</span>
+            </h2>
+            <div id="kuis-container" class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm">
+                <!-- JS Injected Kuis -->
+                <div class="text-center">
+                    <p class="mb-4">Kuis ini berisi 10 soal cerita (HOTS). Waktu kamu 10 Menit.</p>
+                    <button onclick="startKuis()" class="bg-secondary text-white font-bold py-2 px-6 rounded-xl btn-3d-secondary">Mulai Kuis</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= ASESMEN AKHIR ================= -->
+        <section id="screen-asesmen-akhir" class="hidden fade-in">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2"><i class="fas fa-flag-checkered mr-2"></i> Asesmen Akhir</h2>
+            <div id="akhir-container" class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm">
+                <div class="text-center">
+                    <p class="mb-4">Kerjakan 10 soal ini dengan sungguh-sungguh untuk mendapatkan sertifikat dan nilai akhir.</p>
+                    <button onclick="startAsesmenAkhir()" class="bg-primary text-white font-bold py-2 px-6 rounded-xl btn-3d">Mulai Asesmen Akhir</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= REFLEKSI ================= -->
+        <section id="screen-refleksi" class="hidden fade-in">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2"><i class="fas fa-face-smile mr-2"></i> Refleksi Belajar</h2>
+            <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm">
+                <p class="mb-4 font-semibold">Bagaimana perasaanmu setelah belajar hari ini?</p>
+                <div class="flex gap-4 justify-center mb-6 text-4xl">
+                    <label class="cursor-pointer grayscale hover:grayscale-0 transition opacity-50 hover:opacity-100">
+                        <input type="radio" name="emoji" class="hidden" value="Sangat Senang"> 🤩
+                    </label>
+                    <label class="cursor-pointer grayscale hover:grayscale-0 transition opacity-50 hover:opacity-100">
+                        <input type="radio" name="emoji" class="hidden" value="Senang"> 😊
+                    </label>
+                    <label class="cursor-pointer grayscale hover:grayscale-0 transition opacity-50 hover:opacity-100">
+                        <input type="radio" name="emoji" class="hidden" value="Biasa Saja"> 😐
+                    </label>
+                    <label class="cursor-pointer grayscale hover:grayscale-0 transition opacity-50 hover:opacity-100">
+                        <input type="radio" name="emoji" class="hidden" value="Bingung"> 😵
+                    </label>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Saya sudah memahami...</label>
+                        <textarea class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700" rows="2"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Hal yang paling menarik adalah...</label>
+                        <textarea class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700" rows="2"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Rencana saya setelah ini adalah...</label>
+                        <textarea class="w-full p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700" rows="2"></textarea>
+                    </div>
+                    <button onclick="submitRefleksi()" class="w-full bg-secondary text-white font-bold py-2 rounded-xl btn-3d-secondary">Simpan Refleksi</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================= SERTIFIKAT ================= -->
+        <section id="screen-sertifikat" class="hidden fade-in">
+            <h2 class="text-2xl font-bold text-primary dark:text-secondary mb-4 border-b-2 border-secondary pb-2"><i class="fas fa-certificate mr-2"></i> Sertifikat Hasil Belajar</h2>
+            
+            <div id="cert-wrapper" class="overflow-x-auto pb-4 flex justify-center">
+                <div id="certificate" class="cert-container flex flex-col justify-center items-center text-center px-16">
+                    <div class="cert-border"></div>
+                    <h1 class="text-4xl font-extrabold text-primary mb-2 mt-8 tracking-widest uppercase">Sertifikat Penghargaan</h1>
+                    <p class="text-lg text-gray-700 mb-6">Diberikan secara membanggakan kepada:</p>
+                    <h2 id="cert-name" class="text-5xl font-bold text-secondary mb-2 font-[Poppins] border-b-2 border-gray-400 pb-2 min-w-[400px]">Nama Siswa</h2>
+                    <p class="text-xl text-gray-800 mb-6 font-semibold">Kelas: <span id="cert-class">VII</span></p>
+                    
+                    <p class="text-md text-gray-600 max-w-lg mb-6">Atas keberhasilannya menyelesaikan materi <strong>Interaksi Sosial</strong> dengan predikat:</p>
+                    
+                    <div class="bg-primary text-white px-8 py-3 rounded-full text-2xl font-bold mb-8 shadow-lg inline-block">
+                        <span id="cert-predikat">Sangat Baik</span> (Nilai: <span id="cert-nilai">0</span>)
+                    </div>
+
+                    <div class="w-full flex justify-between px-12 mt-auto mb-10">
+                        <div class="text-center">
+                            <p class="mb-8 text-gray-600" id="cert-date">Tanggal</p>
+                            <div class="border-t border-gray-400 w-40 pt-1">Guru Mapel</div>
+                        </div>
+                        <div>
+                            <!-- Seal / Stamp -->
+                            <div class="w-24 h-24 border-4 border-secondary rounded-full flex items-center justify-center text-secondary font-bold text-sm transform rotate-12 bg-white opacity-80 shadow-inner">
+                                SMPN 7<br>Sajira
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-4 justify-center mt-6 flex-wrap">
+                <button onclick="downloadSertifikat()" class="bg-primary text-white font-bold py-2 px-6 rounded-xl btn-3d"><i class="fas fa-download mr-2"></i> Unduh PNG</button>
+                <button onclick="printSertifikat()" class="bg-secondary text-white font-bold py-2 px-6 rounded-xl btn-3d-secondary"><i class="fas fa-print mr-2"></i> Cetak</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav id="bottom-nav" class="hidden bg-white dark:bg-darkCard border-t dark:border-gray-800 p-4 sticky bottom-0 z-40">
+        <div class="max-w-4xl mx-auto flex justify-between">
+            <button onclick="navPrev()" id="btn-prev" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold"><i class="fas fa-chevron-left mr-1"></i> Prev</button>
+            <button onclick="navTo('menu')" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-purple-800 transition font-bold"><i class="fas fa-home"></i></button>
+            <button onclick="navNext()" id="btn-next" class="px-4 py-2 bg-secondary text-white rounded-lg hover:bg-teal-500 transition font-semibold">Next <i class="fas fa-chevron-right ml-1"></i></button>
+        </div>
+    </nav>
+
+    <footer id="app-footer" class="bg-primary text-white/70 text-center py-4 text-xs mt-auto">
+        <p>&copy; 2026 Media Pembelajaran Interaktif - SMPN 7 Sajira</p>
+    </footer>
+
+    <script>
+        // State
+        let currentUser = { name: '', class: '' };
+        let scores = { awal: 0, kuis: 0, akhir: 0 };
+        
+        // Navigation array
+        const screens = ['login', 'menu', 'tujuan', 'apersepsi', 'asesmen-awal', 'materi', 'simulasi', 'kuis', 'asesmen-akhir', 'refleksi', 'sertifikat'];
+        let currentScreenIdx = 0;
+
+        // Init
+        window.onload = () => {
+            // Check local storage if needed, but we keep it session-based for simplicity
+            setupRadioEmojis();
+        }
+
+        // --- Core Functions ---
+        function startApp() {
+            const name = document.getElementById('input-name').value.trim();
+            const classDropdown = document.getElementById('input-class-dropdown').value;
+            const classManual = document.getElementById('input-class-manual').value.trim();
+            
+            let userClass = classDropdown === 'custom' ? classManual : classDropdown;
+
+            if (!name || !userClass) {
+                showMessage("Mohon isi Nama dan Kelas untuk melanjutkan.");
+                return;
+            }
+
+            currentUser.name = name;
+            currentUser.class = userClass;
+            
+            // Setup UI
+            document.getElementById('greet-name').innerText = currentUser.name;
+            document.getElementById('display-name').innerText = currentUser.name;
+            
+            // Cert Data prep
+            document.getElementById('cert-name').innerText = currentUser.name;
+            document.getElementById('cert-class').innerText = currentUser.class;
+            let today = new Date();
+            document.getElementById('cert-date').innerText = today.toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'});
+
+            document.getElementById('app-header').classList.remove('hidden');
+            document.getElementById('bottom-nav').classList.remove('hidden');
+            
+            navTo('menu');
+            
+            // Play Audio quietly if allowed
+            let bgm = document.getElementById('bgm');
+            bgm.volume = 0.2;
+            bgm.play().catch(e => console.log("Audio autoplay blocked until user interaction."));
+        }
+
+        function checkClassCustom() {
+            const dropdown = document.getElementById('input-class-dropdown');
+            const manual = document.getElementById('input-class-manual');
+            if (dropdown.value === 'custom') {
+                manual.classList.remove('hidden');
+            } else {
+                manual.classList.add('hidden');
+            }
+        }
+
+        function navTo(screenId) {
+            // Stop active TTS reading
+            window.speechSynthesis.cancel();
+            
+            // Hide all
+            screens.forEach(s => {
+                let el = document.getElementById('screen-' + s);
+                if (el) el.classList.add('hidden');
+            });
+            
+            // Show target
+            let target = document.getElementById('screen-' + screenId);
+            if (target) {
+                target.classList.remove('hidden');
+                currentScreenIdx = screens.indexOf(screenId);
+                
+                // Read text if TTS is active (automatic read is annoying, let user click button instead)
+                
+                // Update Progress bar
+                let pct = currentScreenIdx === 0 ? 0 : Math.round((currentScreenIdx / (screens.length - 1)) * 100);
+                document.getElementById('global-progress').style.width = pct + '%';
+
+                // Manage Nav buttons
+                document.getElementById('btn-prev').style.visibility = (currentScreenIdx <= 1) ? 'hidden' : 'visible';
+                document.getElementById('btn-next').style.visibility = (currentScreenIdx === screens.length - 1 || currentScreenIdx === 0) ? 'hidden' : 'visible';
+            }
+            window.scrollTo(0,0);
+        }
+
+        function navNext() {
+            if (currentScreenIdx < screens.length - 1) navTo(screens[currentScreenIdx + 1]);
+        }
+        function navPrev() {
+            if (currentScreenIdx > 1) navTo(screens[currentScreenIdx - 1]);
+        }
+
+        let audioPlaying = false;
+        function toggleAudio() {
+            let bgm = document.getElementById('bgm');
+            let btn = document.getElementById('btn-audio');
+            if (audioPlaying) {
+                bgm.pause();
+                btn.innerHTML = '<i class="fas fa-volume-mute"></i>';
+                btn.classList.add('bg-white/20');
+                btn.classList.remove('bg-secondary');
+            } else {
+                bgm.play();
+                btn.innerHTML = '<i class="fas fa-music"></i>';
+                btn.classList.remove('bg-white/20');
+                btn.classList.add('bg-secondary');
+            }
+            audioPlaying = !audioPlaying;
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+        }
+
+        function toggleTTS() {
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            } else {
+                // Get visible text from current screen
+                let currentScreenId = screens[currentScreenIdx];
+                let contentEl = document.getElementById('screen-' + currentScreenId);
+                let textToRead = contentEl.innerText || contentEl.textContent;
+                
+                let msg = new SpeechSynthesisUtterance();
+                msg.text = textToRead;
+                msg.lang = 'id-ID';
+                window.speechSynthesis.speak(msg);
+            }
+        }
+
+        function showMessage(msg) {
+            // Fallback since alert is forbidden
+            const box = document.createElement('div');
+            box.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-darkCard p-6 rounded-xl shadow-2xl z-[100] text-center border-t-4 border-secondary';
+            box.innerHTML = `<p class="mb-4 text-lg font-semibold">${msg}</p><button onclick="this.parentElement.remove()" class="bg-primary text-white px-6 py-2 rounded-lg">OK</button>`;
+            document.body.appendChild(box);
+        }
+
+        const dataAsesmenAwal = [
+            { q: "Apa yang menjadi syarat utama terjadinya interaksi sosial?", options: ["Sama-sama diam", "Kontak sosial dan komunikasi", "Tinggal di tempat yang sama", "Memiliki hobi yang sama"], a: 1 },
+            { q: "Ketika kamu menelepon temanmu, bentuk kontak sosial apa yang terjadi?", options: ["Primer langsung", "Primer tidak langsung", "Sekunder langsung", "Sekunder tidak langsung"], a: 2 },
+            { q: "Proses interaksi yang mengarah pada kesatuan disebut...", options: ["Asosiatif", "Disosiatif", "Kompetisi", "Konflik"], a: 0 },
+            { q: "Berikut ini yang merupakan contoh interaksi disosiatif adalah...", options: ["Gotong royong membangun poskamling", "Tawuran antar pelajar", "Kerjasama menyelesaikan tugas", "Mediasi warga yang berselisih"], a: 1 },
+            { q: "Pencampuran dua kebudayaan menjadi satu dan menghasilkan kebudayaan baru disebut...", options: ["Akomodasi", "Akulturasi", "Asimilasi", "Kerja sama"], a: 2 }
+        ];
+
+        function renderAsesmenAwal() {
+            let html = '<div class="space-y-6">';
+            dataAsesmenAwal.forEach((item, i) => {
+                html += `<div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p class="font-bold mb-3">${i+1}. ${item.q}</p>
+                    <div class="space-y-2">`;
+                item.options.forEach((opt, j) => {
+                    html += `<label class="block p-3 border rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        <input type="radio" name="q_awal_${i}" value="${j}" class="mr-2 accent-primary"> ${opt}
+                    </label>`;
+                });
+                html += `</div></div>`;
+            });
+            html += `<button onclick="submitAsesmenAwal()" class="w-full bg-primary text-white font-bold py-3 rounded-xl mt-4 btn-3d">Kirim Jawaban</button></div>`;
+            document.getElementById('awal-container').innerHTML = html;
+        }
+
+        function submitAsesmenAwal() {
+            let score = 0;
+            let answered = 0;
+            dataAsesmenAwal.forEach((item, i) => {
+                let selected = document.querySelector(`input[name="q_awal_${i}"]:checked`);
+                if (selected) {
+                    answered++;
+                    if (parseInt(selected.value) === item.a) score += 20;
+                }
+            });
+            if (answered < dataAsesmenAwal.length) {
+                showMessage("Harap jawab semua pertanyaan.");
+                return;
+            }
+            scores.awal = score;
+            document.getElementById('awal-container').innerHTML = `
+                <div class="text-center p-6">
+                    <i class="fas fa-check-circle text-6xl text-secondary mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2">Skor Kamu: ${score}/100</h3>
+                    <p class="mb-4">Ini adalah nilai awalmu. Mari pelajari materinya untuk lebih memahami!</p>
+                    <button onclick="navNext()" class="bg-secondary text-white px-6 py-2 rounded-lg">Lanjut ke Materi</button>
+                </div>`;
+        }
+        
+        // Init renderer
+        renderAsesmenAwal();
+
+        const simItemsData = [
+            { id: 1, text: "Gotong royong bersihkan kelas", cat: "Asosiatif" },
+            { id: 2, text: "Tawuran antar sekolah", cat: "Disosiatif" },
+            { id: 3, text: "Lomba tarik tambang", cat: "Disosiatif" }, // Kompetisi
+            { id: 4, text: "Diskusi kelompok tugas IPA", cat: "Asosiatif" },
+            { id: 5, text: "Menyebarkan hoaks tentang teman", cat: "Disosiatif" }, // Kontravensi
+            { id: 6, text: "Mediasi konflik warga", cat: "Asosiatif" }
+        ];
+        
+        let simItems = [...simItemsData];
+        let selectedItem = null;
+
+        function renderSimulasiItems() {
+            let container = document.getElementById('sim-items');
+            container.innerHTML = '';
+            simItems.forEach(item => {
+                let div = document.createElement('div');
+                div.className = `p-3 bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm cursor-pointer hover:bg-accent dark:hover:bg-gray-700 transition`;
+                div.innerText = item.text;
+                div.onclick = () => {
+                    // Highlight selected
+                    Array.from(container.children).forEach(c => c.classList.remove('border-primary', 'bg-blue-50'));
+                    div.classList.add('border-primary', 'bg-blue-50');
+                    selectedItem = item;
+                };
+                container.appendChild(div);
+            });
+        }
+
+        function selectCategory(category) {
+            if (!selectedItem) {
+                showMessage("Pilih aktivitas di atas terlebih dahulu dengan mengetuknya!");
+                return;
+            }
+
+            if (selectedItem.cat === category) {
+                // Correct
+                let dest = document.getElementById(`content-${category.toLowerCase()}`);
+                let itemDiv = document.createElement('div');
+                itemDiv.className = "bg-white text-black p-2 rounded-md shadow-sm border text-xs";
+                itemDiv.innerText = selectedItem.text;
+                dest.appendChild(itemDiv);
+                
+                // Remove from pool
+                simItems = simItems.filter(i => i.id !== selectedItem.id);
+                selectedItem = null;
+                renderSimulasiItems();
+                
+                if (simItems.length === 0) {
+                    let fb = document.getElementById('sim-feedback');
+                    fb.innerHTML = '🎉 Luar Biasa! Kamu berhasil mengklasifikasikan semua interaksi dengan benar!';
+                    fb.classList.remove('hidden');
+                    fb.classList.add('text-green-600');
+                    document.getElementById('btn-reset-sim').classList.remove('hidden');
+                }
+            } else {
+                // Wrong
+                showMessage(`Oops! "${selectedItem.text}" bukanlah bentuk ${category}. Coba pelajari lagi perbedaan menyatukan dan memisahkan.`);
+            }
+        }
+
+        function resetSimulasi() {
+            simItems = [...simItemsData];
+            document.getElementById('content-asosiatif').innerHTML = '';
+            document.getElementById('content-disosiatif').innerHTML = '';
+            document.getElementById('sim-feedback').classList.add('hidden');
+            document.getElementById('btn-reset-sim').classList.add('hidden');
+            selectedItem = null;
+            renderSimulasiItems();
+        }
+        
+        renderSimulasiItems();
+
+        const dataKuis = [
+            { q: "Rina dan Susi bersaing untuk menjadi juara kelas, namun mereka tetap bersaing secara sehat dengan rajin belajar tanpa saling mengganggu. Interaksi ini termasuk disosiatif berbentuk...", options: ["Konflik", "Kontravensi", "Kompetisi", "Konsiliasi"], a: 2, pembahasan: "Kompetisi adalah persaingan positif tanpa adanya ancaman atau kekerasan." },
+            { q: "Dalam sebuah musyawarah warga, terjadi perbedaan pendapat yang tajam. Kepala desa akhirnya turun tangan dan mencari jalan tengah yang disetujui semua pihak. Proses penyelesaian ini disebut...", options: ["Asimilasi", "Kerja sama", "Akomodasi", "Akulturasi"], a: 2, pembahasan: "Akomodasi adalah usaha meredakan pertentangan (dalam hal ini mediasi oleh kepala desa)." },
+            { q: "Masuknya musik K-Pop ke Indonesia diterima dengan baik oleh remaja, bahkan sering dipadukan dengan gaya bahasa lokal. Namun, budaya asli Indonesia tidak hilang. Ini merupakan contoh...", options: ["Asimilasi", "Akulturasi", "Kerjasama", "Akomodasi"], a: 1, pembahasan: "Akulturasi adalah percampuran budaya tanpa menghilangkan ciri khas budaya aslinya." },
+            { q: "Andi menyebarkan desas-desus tidak benar tentang Budi karena iri Budi terpilih jadi ketua OSIS. Tindakan Andi merupakan bentuk interaksi...", options: ["Pertentangan", "Kontravensi", "Persaingan", "Asimilasi"], a: 1, pembahasan: "Kontravensi ditandai dengan rasa tidak suka yang disembunyikan, seperti menyebarkan gosip atau fitnah." },
+            { q: "Agar interaksi sosial terjadi secara sempurna, Andi mengirim surat kepada temannya di luar pulau. Namun temannya belum membalas. Mengapa ini belum disebut interaksi yang utuh?", options: ["Tidak ada kontak fisik", "Tidak ada komunikasi yang baik", "Belum ada feedback (umpan balik)", "Alat komunikasinya salah"], a: 2, pembahasan: "Syarat komunikasi belum lengkap karena pihak penerima (komunikan) belum memberikan reaksi/feedback." },
+            { q: "Dampak negatif dari proses disosiatif yang berlebihan dalam masyarakat adalah...", options: ["Tingginya solidaritas", "Integrasi sosial kuat", "Terjadinya disintegrasi / perpecahan", "Kesejahteraan meningkat"], a: 2, pembahasan: "Proses disosiatif (konflik, pertentangan) yang ekstrem menyebabkan disintegrasi atau perpecahan masyarakat." },
+            { q: "Pernikahan campuran antarsuku (Amalgamasi) sering kali menghasilkan kebudayaan baru dan menghilangkan sama sekali batas perbedaan budaya aslinya. Hal ini adalah wujud...", options: ["Asimilasi", "Akulturasi", "Kerja sama", "Kontravensi"], a: 0, pembahasan: "Asimilasi adalah percampuran dua budaya yang melebur menjadi budaya baru yang menyatu." },
+            { q: "Saat pandemi, masyarakat bahu-membahu mengumpulkan dana untuk tetangga yang isolasi mandiri. Bentuk interaksi ini didorong oleh faktor...", options: ["Simpati", "Sugesti", "Imitasi", "Identifikasi"], a: 0, pembahasan: "Simpati adalah perasaan tertarik atau kasihan yang mendorong seseorang untuk menolong orang lain." },
+            { q: "Bentrokan antar suporter bola setelah pertandingan sepak bola merupakan contoh bentuk interaksi sosial...", options: ["Kompetisi", "Kontravensi", "Konflik / Pertentangan", "Akomodasi"], a: 2, pembahasan: "Bentrokan melibatkan kekerasan dan ancaman fisik, sehingga termasuk konflik/pertentangan." },
+            { q: "Pak RT melerai dua warga yang bertengkar masalah batas tanah dengan cara mempertemukan mereka dan memberikan nasehat. Usaha Pak RT termasuk akomodasi jenis...", options: ["Koersi", "Mediasi", "Arbitrase", "Toleransi"], a: 1, pembahasan: "Mediasi melibatkan pihak ketiga yang netral sebagai penasihat, tanpa wewenang memutuskan secara paksa." }
+        ];
+
+        let currentKuisIdx = 0;
+        let scoreKuis = 0;
+        let kuisTimer;
+        let timeKuis = 600; // 10 minutes
+
+        function startKuis() {
+            currentKuisIdx = 0;
+            scoreKuis = 0;
+            timeKuis = 600;
+            renderKuisSoal();
+            
+            clearInterval(kuisTimer);
+            kuisTimer = setInterval(() => {
+                timeKuis--;
+                let m = Math.floor(timeKuis / 60).toString().padStart(2, '0');
+                let s = (timeKuis % 60).toString().padStart(2, '0');
+                document.getElementById('kuis-timer').innerText = `${m}:${s}`;
+                if (timeKuis <= 0) {
+                    clearInterval(kuisTimer);
+                    endKuis(true);
+                }
+            }, 1000);
+        }
+
+        function renderKuisSoal() {
+            let q = dataKuis[currentKuisIdx];
+            let html = `
+                <div class="mb-4 text-sm font-bold text-gray-500">Soal ${currentKuisIdx + 1} / 10</div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+                  <div class="bg-secondary h-2.5 rounded-full transition-all" style="width: ${((currentKuisIdx) / 10) * 100}%"></div>
+                </div>
+                <p class="font-bold text-lg mb-6 leading-relaxed">${q.q}</p>
+                <div class="space-y-3" id="kuis-options">
+            `;
+            q.options.forEach((opt, j) => {
+                html += `<button onclick="answerKuis(${j})" class="w-full text-left p-4 border rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition font-medium">${opt}</button>`;
+            });
+            html += `</div>
+            <div id="kuis-feedback" class="hidden mt-6 p-4 rounded-xl"></div>`;
+            document.getElementById('kuis-container').innerHTML = html;
+        }
+
+        function answerKuis(selectedIdx) {
+            let q = dataKuis[currentKuisIdx];
+            let optionsContainer = document.getElementById('kuis-options');
+            let feedback = document.getElementById('kuis-feedback');
+            
+            // Disable buttons
+            let btns = optionsContainer.getElementsByTagName('button');
+            for(let btn of btns) { btn.disabled = true; }
+
+            if (selectedIdx === q.a) {
+                scoreKuis += 10;
+                btns[selectedIdx].classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+                feedback.className = "mt-6 p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 dark:bg-green-900/30 dark:text-green-300 block fade-in";
+                feedback.innerHTML = `<h4 class="font-bold mb-1"><i class="fas fa-check-circle mr-2"></i>Benar!</h4><p class="text-sm">${q.pembahasan}</p>`;
+            } else {
+                btns[selectedIdx].classList.add('bg-red-100', 'border-red-500', 'text-red-800');
+                btns[q.a].classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+                feedback.className = "mt-6 p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 dark:bg-red-900/30 dark:text-red-300 block fade-in";
+                feedback.innerHTML = `<h4 class="font-bold mb-1"><i class="fas fa-times-circle mr-2"></i>Kurang Tepat.</h4><p class="text-sm">${q.pembahasan}</p>`;
+            }
+
+            feedback.innerHTML += `<button onclick="nextKuisQ()" class="mt-4 bg-primary text-white px-6 py-2 rounded-lg font-bold">Lanjut <i class="fas fa-arrow-right"></i></button>`;
+        }
+
+        function nextKuisQ() {
+            currentKuisIdx++;
+            if (currentKuisIdx < dataKuis.length) {
+                renderKuisSoal();
+            } else {
+                endKuis(false);
+            }
+        }
+
+        function endKuis(isTimeout) {
+            clearInterval(kuisTimer);
+            scores.kuis = scoreKuis;
+            document.getElementById('kuis-container').innerHTML = `
+                <div class="text-center p-6 fade-in">
+                    ${isTimeout ? '<h3 class="text-xl text-red-500 font-bold mb-2">Waktu Habis!</h3>' : ''}
+                    <i class="fas fa-trophy text-6xl text-yellow-400 mb-4"></i>
+                    <h3 class="text-2xl font-bold mb-2">Kuis Selesai</h3>
+                    <p class="text-xl mb-6">Skor Kuis Kamu: <strong class="text-primary text-3xl">${scoreKuis}</strong></p>
+                    <button onclick="navNext()" class="bg-secondary text-white px-6 py-3 rounded-xl font-bold btn-3d-secondary">Lanjut ke Asesmen Akhir</button>
+                </div>
+            `;
+        }
+
+        // Reusing same data format, but different questions for final
+        const dataAkhir = [
+            { q: "Syarat terjadinya interaksi sosial menurut sosiologi adalah...", options: ["Toleransi dan simpati", "Kontak dan komunikasi", "Asimilasi dan akulturasi", "Kerja sama dan akomodasi"], a: 1 },
+            { q: "Hubungan timbal balik antara individu dan kelompok disebut...", options: ["Proses sosial", "Interaksi sosial", "Tindakan sosial", "Gejala sosial"], a: 1 },
+            { q: "Bentuk interaksi sosial yang menghasilkan perpecahan disebut...", options: ["Asosiatif", "Disosiatif", "Integratif", "Konstruktif"], a: 1 },
+            { q: "Berikut ini yang termasuk contoh kontak sosial sekunder langsung adalah...", options: ["Berjabat tangan", "Tersenyum dari jauh", "Video call via WhatsApp", "Menitipkan salam lewat teman"], a: 2 },
+            { q: "Kerja sama antar warga membersihkan selokan desa termasuk bentuk interaksi...", options: ["Asosiatif", "Disosiatif", "Persaingan", "Akomodasi"], a: 0 },
+            { q: "Usaha manusia untuk meredakan suatu pertentangan agar tercipta kestabilan disebut...", options: ["Asimilasi", "Kerja sama", "Akomodasi", "Kompetisi"], a: 2 },
+            { q: "Dampak positif dari sebuah kompetisi/persaingan di sekolah adalah...", options: ["Memunculkan permusuhan", "Memacu semangat belajar siswa", "Memicu tawuran antar genk", "Menimbulkan kecemburuan sosial"], a: 1 },
+            { q: "Proses penerimaan unsur budaya baru tanpa menghilangkan unsur budaya lama disebut...", options: ["Asimilasi", "Akulturasi", "Amalgamasi", "Akomodasi"], a: 1 },
+            { q: "Rasa tidak suka yang disembunyikan agar tidak terjadi konflik terbuka disebut...", options: ["Pertentangan", "Kompetisi", "Kontravensi", "Konflik"], a: 2 },
+            { q: "Interaksi sosial sangat penting bagi manusia karena...", options: ["Manusia mahluk yang kuat", "Manusia dapat hidup mandiri", "Manusia adalah mahluk sosial (zoon politicon)", "Manusia ingin berkuasa"], a: 2 }
+        ];
+
+        function startAsesmenAkhir() {
+            let html = '<div class="space-y-6 fade-in">';
+            dataAkhir.forEach((item, i) => {
+                html += `<div class="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p class="font-bold mb-3">${i+1}. ${item.q}</p>
+                    <div class="space-y-2">`;
+                item.options.forEach((opt, j) => {
+                    html += `<label class="block p-3 border rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition">
+                        <input type="radio" name="q_akhir_${i}" value="${j}" class="mr-2 accent-primary"> ${opt}
+                    </label>`;
+                });
+                html += `</div></div>`;
+            });
+            html += `<button onclick="submitAsesmenAkhir()" class="w-full bg-primary text-white font-bold py-3 rounded-xl mt-4 btn-3d">Selesai & Lihat Hasil</button></div>`;
+            document.getElementById('akhir-container').innerHTML = html;
+        }
+
+        function submitAsesmenAkhir() {
+            let score = 0;
+            let answered = 0;
+            dataAkhir.forEach((item, i) => {
+                let selected = document.querySelector(`input[name="q_akhir_${i}"]:checked`);
+                if (selected) {
+                    answered++;
+                    if (parseInt(selected.value) === item.a) score += 10; // 10q * 10 = 100
+                }
+            });
+            
+            if (answered < dataAkhir.length) {
+                showMessage("Harap jawab semua pertanyaan di Asesmen Akhir.");
+                return;
+            }
+
+            scores.akhir = score;
+            let predikat = "";
+            let emojiResult = "";
+            if (score >= 90) { predikat = "Sangat Baik"; emojiResult = "🏆"; confetti({particleCount: 150, spread: 70, origin: { y: 0.6 }}); }
+            else if (score >= 80) { predikat = "Baik"; emojiResult = "🌟"; }
+            else if (score >= 70) { predikat = "Cukup"; emojiResult = "👍"; }
+            else { predikat = "Perlu Bimbingan"; emojiResult = "💪"; }
+
+            // Update Certificate Data
+            document.getElementById('cert-nilai').innerText = score;
+            document.getElementById('cert-predikat').innerText = predikat;
+            if (score >= 90) document.getElementById('cert-predikat').className = "text-green-300";
+
+            document.getElementById('akhir-container').innerHTML = `
+                <div class="text-center p-6 fade-in">
+                    <div class="text-6xl mb-4">${emojiResult}</div>
+                    <h3 class="text-2xl font-bold mb-2">Asesmen Akhir Selesai</h3>
+                    <div class="my-6">
+                        <p class="text-lg">Nilai Akhir: <strong class="text-4xl block text-primary mt-2">${score}</strong></p>
+                        <p class="text-xl mt-4">Predikat: <strong>${predikat}</strong></p>
+                    </div>
+                    <button onclick="navNext()" class="bg-secondary text-white px-6 py-3 rounded-xl font-bold btn-3d-secondary">Lanjut ke Refleksi</button>
+                </div>`;
+        }
+
+        function setupRadioEmojis() {
+            const radios = document.querySelectorAll('input[name="emoji"]');
+            radios.forEach(radio => {
+                radio.addEventListener('change', function() {
+                    radios.forEach(r => r.parentElement.classList.remove('opacity-100', 'grayscale-0', 'scale-125'));
+                    radios.forEach(r => r.parentElement.classList.add('opacity-50', 'grayscale'));
+                    
+                    if(this.checked) {
+                        this.parentElement.classList.remove('opacity-50', 'grayscale');
+                        this.parentElement.classList.add('opacity-100', 'grayscale-0', 'scale-125');
+                    }
+                });
+            });
+        }
+
+        function submitRefleksi() {
+            showMessage("Terima kasih! Refleksimu telah disimpan.");
+            setTimeout(() => {
+                navNext(); // Go to certificate
+            }, 1500);
+        }
+
+        function downloadSertifikat() {
+            let certElement = document.getElementById('certificate');
+            
+            // html2canvas needs the element to be visible and unscaled for best capture
+            html2canvas(certElement, {
+                scale: 2, // High resolution
+                backgroundColor: "#ffffff",
+            }).then(canvas => {
+                let link = document.createElement('a');
+                link.download = `Sertifikat_${currentUser.name.replace(/\s+/g, '_')}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        function printSertifikat() {
+            let certElement = document.getElementById('certificate');
+            html2canvas(certElement, { scale: 2 }).then(canvas => {
+                let printWindow = window.open('', '_blank');
+                printWindow.document.write('<html><head><title>Print Sertifikat</title>');
+                printWindow.document.write('<style>body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; } img { max-width: 100%; max-height: 100vh; }</style>');
+                printWindow.document.write('</head><body>');
+                printWindow.document.write('<img src="' + canvas.toDataURL('image/png') + '" onload="window.print();window.close()" />');
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+            });
+        }
+    </script>
+</body>
+</html>
